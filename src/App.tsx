@@ -2,23 +2,28 @@ import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 
+import { proxify } from './util/proxify';
+
+const o = { a: 1, b: 2, c: { d: 3, e: 4, f: [1, 2, 3, [4, 5, { g: 6 }]] }, func: () => { return 'hi' } };
+
+const p = new (proxify as any)(o);
+
+//Object test
+p.c.d = 4;
+//Array test
+p.c.f[0] = 2;
+p.c.f[0] = 1;
+
+
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <pre className="App">
+        {JSON.stringify(p, null, 4)}
+      </pre>
+      <pre>
+        {JSON.stringify(p.getChanges(), null, 4)}
+      </pre>
     </div>
   );
 }
