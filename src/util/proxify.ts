@@ -1,5 +1,4 @@
 import _ from 'lodash'
-import { Z_PARTIAL_FLUSH } from 'zlib';
 /**
  * Defines the change tracking features that comes together with the proxified object
  */
@@ -67,7 +66,7 @@ function bindProxy<T>(
     privates: proxyPrivates,
     root: (T | object) & iProxify,
     o: T | any = root,
-    path: bindProxyPath[] = []
+    path: (string | number | symbol)[] = []
 ): T & iProxify {
 
     if (typeof o === 'undefined' || o === null || typeof o === 'function') {
@@ -83,19 +82,19 @@ function bindProxy<T>(
     const constructor: () => T = Object.getPrototypeOf(o).constructor;
 
     let oldValObj = path.reduce((oldValCursor, pathElement) => {
-        if (!oldValCursor[pathElement.key]) {
+        if (!oldValCursor[pathElement]) {
             if (typeof o === 'object') {
                 if (constructor.name === 'Array') {
-                    oldValCursor[pathElement.key] = [];
+                    oldValCursor[pathElement] = [];
                 }
                 else {
-                    oldValCursor[pathElement.key] = {};
+                    oldValCursor[pathElement] = {};
                 }
             } else if (typeof oldValCursor === 'object') {
-                oldValCursor[pathElement.key] = o;
+                oldValCursor[pathElement] = o;
             }
         }
-        return oldValCursor[pathElement.key];
+        return oldValCursor[pathElement];
     }, privates.oldValues);
 
     //If type object, we want to iterate through members and proxify them before 
@@ -105,11 +104,33 @@ function bindProxy<T>(
         for (const [k, v] of Object.entries(o)) {
             //Arrays have special treatment due to length property also changing when appending etc.
             if (!(constructor.name === 'Array' && k === 'length'))
-                o[k] = bindProxy(privates, root, v, [...path, { parentObj: o, key: k }]);
+                o[k] = bindProxy(privates, root, v, [...path, k ]);
         }
+
+        let setChange = (property: string | number, value: any) => {
+            let deltaObj = path.reduce((deltaCursor, pathElement) => {
+                if (!deltaCursor[pathElement])
+                    deltaCursor[pathElement] = {};
+
+                return deltaCursor[pathElement]
+            }, privates.changesDelta)
+
+            deltaObj[property] = value;
+        }
+
         return new Proxy(o, {
+
+            deleteProperty: (target, property: string | number) => {
+                console.log(`${property} was deleted`);
+
+                //Keeping the property, but with undefined value in the change Object so we can track the delete               
+                setChange(property, undefined);
+                return delete target[property];
+            },
+
             set: (target: any, property: string | number, value: any, receiver): any => {
 
+                console.log(`${property} being set to ${value}`);
                 //Compare with old value
                 if (_.isEqual(oldValObj[property], value)) {
                     //If we revert to old value, we need to cleanup the delta object
@@ -118,10 +139,10 @@ function bindProxy<T>(
 
                     //Traverse down the nested objects as close as possible to the changed property
                     for (const pathElement of path) {
-                        if (!deltaObj[pathElement.key])
+                        if (!deltaObj[pathElement])
                             break;
 
-                        deltaObj = deltaObj[pathElement.key];
+                        deltaObj = deltaObj[pathElement];
                         deltaObjPath.push(deltaObj);
                     }
 
@@ -134,23 +155,14 @@ function bindProxy<T>(
                             for (let pathIndex = 0; pathIndex < deltaObjPath.length - 1; pathIndex++) {
                                 const pathElement = deltaObjPath[pathIndex + 1];
                                 if (Object.keys(deltaObjPath[pathIndex]).length === 0) {
-                                    delete pathElement[path[deltaObjPath.length - pathIndex - 2].key];
+                                    delete pathElement[path[deltaObjPath.length - pathIndex - 2]];
                                 }
                             }
                         }
                     }
                 }
                 else {
-                    //Make sure minimal path to property is built from root
-                    let deltaObj = path.reduce((deltaCursor, pathElement) => {
-                        if (!deltaCursor[pathElement.key])
-                            deltaCursor[pathElement.key] = {};
-
-                        return deltaCursor[pathElement.key]
-                    }, privates.changesDelta)
-
-                    deltaObj[property] = value;
-
+                    setChange(property, value);
                 }
 
                 target[property] = value;
@@ -161,14 +173,6 @@ function bindProxy<T>(
     }
 
     return o;
-}
-
-/**
- * Key value pair helping explain routes in object trees
- */
-interface bindProxyPath {
-    parentObj: any;
-    key: string | number | symbol;
 }
 
 /**
