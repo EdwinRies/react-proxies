@@ -1,0 +1,57 @@
+.TreeNode {
+  width: min-content;
+}
+
+.TreeNode > ul {
+  list-style-type: none;
+}
+.TreeNode .NodeVal {
+  border-radius: 0.1em;
+  min-width: 10em;
+  max-width: min-content;
+  position: relative;
+}
+.TreeNode .NodeVal::after {
+  content: ",";
+  color: #3fa352;
+  font-weight: 600;
+}
+.TreeNode .property {
+  display: flex;
+}
+.TreeNode .property > * {
+  vertical-align: middle;
+  display: inline-block;
+}
+.TreeNode .property .key {
+  font-weight: 600;
+  vertical-align: middle;
+}
+.TreeNode .property .key::after {
+  content: ":";
+  color: #3fa352;
+  font-weight: 1000;
+  padding: 0.5em;
+}
+
+.TreeNode.Array::after, .TreeNode.Array::before, .TreeNode.Object::after, .TreeNode.Object::before {
+  margin-left: 1em;
+  font-weight: 600;
+  color: #dd2121;
+}
+
+.TreeNode.Object::before {
+  content: "{";
+}
+
+.TreeNode.Object::after {
+  content: "}";
+}
+
+.TreeNode.Array::before {
+  content: "[";
+}
+
+.TreeNode.Array::after {
+  content: "]";
+}

@@ -1,0 +1,77 @@
+$color-dark: #4e1e0b;
+$color-2: #3fa352;
+$color-3: #dd2121;
+
+.TreeNode{
+    width: min-content;
+}
+
+.TreeNode {
+
+    >ul {
+        list-style-type: none;
+    }
+
+    .NodeVal {
+        border-radius: 0.1em;
+        min-width: 10em;
+        max-width: min-content;
+        position: relative;
+    }
+
+    .NodeVal::after{
+        content: ',';
+        color: $color-2;
+        font-weight: 600;
+    }
+
+    .property {
+        display: flex;
+    }
+
+    .property {
+        >* {
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        .key {
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
+        .key::after {
+            content: ':';
+            color: $color-2;
+            font-weight: 1000;
+            padding: 0.5em;
+        }
+    }
+
+}
+
+%object-type-wrapper {
+    margin-left: 1em;
+    font-weight: 600;
+    color: $color-3;
+}
+
+.TreeNode.Object::before {
+    content: '{';
+    @extend %object-type-wrapper;
+}
+
+.TreeNode.Object::after {
+    content: '}';
+    @extend %object-type-wrapper;
+}
+
+.TreeNode.Array::before {
+    content: '[';
+    @extend %object-type-wrapper;
+}
+
+.TreeNode.Array::after {
+    content: ']';
+    @extend %object-type-wrapper;
+}
