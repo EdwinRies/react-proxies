@@ -9,11 +9,24 @@ interface iProxify {
     getChanges: () => any;
 }
 
+interface observer {
+    (
+        path: (string | number | symbol)[],
+        property: string | number | symbol,
+        value: any
+    ): void
+}
+
 /**
  * Will wrap the object in a proxy to track changes of children
  * @param o Any object to be proxified
+ * @param observers observer callbacks to be executed on each change
  */
-export function proxify<T>(this: T & iProxify, o: T): T & iProxify {
+export function proxify<T>(
+    this: T & iProxify,
+    o: T,
+    observers: observer[] = []
+): T & iProxify {
     const original: T & iProxify | any = o;
 
     //If the function is called without new Keyword, we will create a blank this keyword
@@ -25,6 +38,18 @@ export function proxify<T>(this: T & iProxify, o: T): T & iProxify {
         changesDelta: {},
         changesDot: {}
     };
+
+    //Observer to track delta changes
+    observers = [(path, property, value) => {
+        let deltaObj = path.reduce((deltaCursor, pathElement) => {
+            if (!deltaCursor[pathElement])
+                deltaCursor[pathElement] = {};
+
+            return deltaCursor[pathElement]
+        }, privates.changesDelta)
+
+        deltaObj[property] = value;
+    }, ...observers];
 
     Object.assign(self, original);
 
@@ -38,8 +63,7 @@ export function proxify<T>(this: T & iProxify, o: T): T & iProxify {
         }
 
     });
-
-    return bindProxy(privates, self);;
+    return bindProxy(privates, self, self, observers);;
 }
 
 /**
@@ -66,6 +90,7 @@ function bindProxy<T>(
     privates: proxyPrivates,
     root: (T | object) & iProxify,
     o: T | any = root,
+    observers: observer[] = [],
     path: (string | number | symbol)[] = []
 ): T & iProxify {
 
@@ -104,18 +129,7 @@ function bindProxy<T>(
         for (const [k, v] of Object.entries(o)) {
             //Arrays have special treatment due to length property also changing when appending etc.
             if (!(constructor.name === 'Array' && k === 'length'))
-                o[k] = bindProxy(privates, root, v, [...path, k ]);
-        }
-
-        let setChange = (property: string | number, value: any) => {
-            let deltaObj = path.reduce((deltaCursor, pathElement) => {
-                if (!deltaCursor[pathElement])
-                    deltaCursor[pathElement] = {};
-
-                return deltaCursor[pathElement]
-            }, privates.changesDelta)
-
-            deltaObj[property] = value;
+                o[k] = bindProxy(privates, root, v, observers, [...path, k]);
         }
 
         return new Proxy(o, {
@@ -123,8 +137,10 @@ function bindProxy<T>(
             deleteProperty: (target, property: string | number) => {
                 console.log(`${property} was deleted`);
 
-                //Keeping the property, but with undefined value in the change Object so we can track the delete               
-                setChange(property, undefined);
+                //Keeping the property, but with undefined value in the change Object so we can track the delete    
+                for (const obs of observers) {
+                    obs(path, property, undefined)
+                }
                 return delete target[property];
             },
 
@@ -133,7 +149,7 @@ function bindProxy<T>(
                 console.log(`${property} being set to ${value}`);
                 //Compare with old value
                 if (_.isEqual(oldValObj[property], value)) {
-                    //If we revert to old value, we need to cleanup the delta object
+                    //If we revert to the old value, we need to cleanup the delta object
                     let deltaObj = privates.changesDelta;
                     let deltaObjPath = [deltaObj];
 
@@ -162,7 +178,9 @@ function bindProxy<T>(
                     }
                 }
                 else {
-                    setChange(property, value);
+                    for (const obs of observers) {
+                        obs(path, property, value)
+                    }
                 }
 
                 target[property] = value;

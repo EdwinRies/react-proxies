@@ -49,9 +49,13 @@
     overflow-y: scroll;
     background-color: #222;
     color: #fff;
+
+    >.TreeNode {
+      margin-top: 2em;
+    }
   }
 
-  h3{
+  h3 {
     background-color: #000;
     margin: 0;
   }

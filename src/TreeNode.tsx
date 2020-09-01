@@ -1,24 +1,23 @@
 import React from 'react';
-import './treenode.scss';
+import './Treenode.scss';
 
-type iTreeNodeProps = {
-    value: any
+type iTreeNode = {
+    value: any,
+    parent?: any,
+    parentProperty?: number | symbol | string,
+    parentComponent?: TreeNode
 }
 
-type iTreeNodeState = {
-    value: any
-}
 
-export class TreeNode extends React.Component<iTreeNodeProps, iTreeNodeProps> {
-    constructor(props: iTreeNodeProps) {
-        super(props);
-        this.state = {
-            value: props.value
-        }
-    }
+export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
 
     render() {
-        const value: any = this.state.value;
+        const { value } = this.props;
+
+        const MakeArrayTooltip = { tooltip: "Make Array" }
+            , MakeObjectTooltip = { tooltip: "Make Object" }
+            , addEntryTooltip = { tooltip: "Add new entry" }
+            , deleteTooltip = { tooltip: "Delete" };
 
         if (typeof value === 'object') {
             const constructor = Object.getPrototypeOf(value).constructor;
@@ -27,11 +26,20 @@ export class TreeNode extends React.Component<iTreeNodeProps, iTreeNodeProps> {
 
             if (isArray) {
                 return <div className="TreeNode Array">
+                    <span className="Action AddEntry" onClick={(event) => {
+                        value.push('New Entry');
+                        this.forceUpdate();
+                    }} {...addEntryTooltip}>+</span>
                     <ul>
                         {Object.entries(value).map(([k, v]) =>
                             <li key={k}>
+                                <span className="Action Delete" {...deleteTooltip}
+                                    onClick={() => {
+                                        delete value[k];
+                                        this.forceUpdate();
+                                    }}>-</span>
                                 <div className="property">
-                                    <TreeNode value={v} key={k} />
+                                    <TreeNode value={v} key={k} parent={value} parentProperty={k} parentComponent={this} />
                                 </div>
                             </li>
                         )}
@@ -40,12 +48,36 @@ export class TreeNode extends React.Component<iTreeNodeProps, iTreeNodeProps> {
             }
             else {
                 return <div className="TreeNode Object">
+                    <span className="Action AddEntry" onClick={() => {
+                        let newKey = 10;
+                        while (newKey.toString(36) in value || /[0-9]/.test(newKey.toString(36))) {
+                            newKey++;
+                        }
+                        value[newKey.toString(36)] = "New Entry";
+                        this.forceUpdate();
+                    }} {...addEntryTooltip}>+</span>
                     <ul>
-                        {Object.entries(value).map(([k, v]) =>
+                        {Object.entries(value).sort((a, b) => { return a[0] > b[0] ? 1 : -1 }).map(([k, v]) =>
                             <li key={k}>
+                                <span className="Action Delete" {...deleteTooltip}
+                                    onClick={() => {
+                                        delete value[k];
+                                        this.forceUpdate();
+                                    }}>-</span>
                                 <div className="property">
-                                    <div className="key">{k}</div>
-                                    <TreeNode value={v} key={k} />
+                                    <div className="key">
+                                        <input defaultValue={k}
+                                            className="NodeKey"
+                                            onChange={(event) => {
+                                                const newKey = (event.target as HTMLInputElement).value
+                                                value[newKey] = value[k];
+                                                delete value[k];
+                                                k = newKey;
+                                            }}
+                                            onBlur={(event) => this.forceUpdate()}
+                                        />
+                                    </div>
+                                    <TreeNode value={v} key={k} parent={value} parentProperty={k} parentComponent={this} />
                                 </div>
                             </li>
                         )}
@@ -55,6 +87,41 @@ export class TreeNode extends React.Component<iTreeNodeProps, iTreeNodeProps> {
         }
 
 
-        return <div className="NodeVal">{`${value}`}</div>
+
+
+        return <div className="NodeValWrapper">
+            <div className="Actions">
+
+                <span
+                    className="Action MakeArray" {...MakeArrayTooltip}
+                    onClick={() => {
+                        this.props.parent[this.props.parentProperty!] = [];
+                        this.props.parentComponent!.forceUpdate();
+                    }}
+                >{`[]`}
+                </span>
+
+                <span
+                    className="Action MakeObject"
+                    {...MakeObjectTooltip}
+                    onClick={() => {
+                        this.props.parent[this.props.parentProperty!] = {};
+                        this.props.parentComponent!.forceUpdate();
+                    }}>
+                    {`{}`}
+                </span>
+            </div>
+            <input
+                onChange={(event: React.ChangeEvent) => {
+                    const { parent, parentProperty } = this.props;
+                    if (parent && parentProperty) {
+                        parent[parentProperty] = (event.target as HTMLInputElement).value;
+                    }
+                    this.forceUpdate();
+                }}
+                defaultValue={value}
+                style={{ width: ((`${this.props.parent[this.props.parentProperty!]}`.length / 2) + 'em') }}
+                className="NodeVal" />
+        </div>
     }
 }

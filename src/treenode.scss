@@ -1,28 +1,150 @@
 $color-dark: #4e1e0b;
 $color-2: #3fa352;
 $color-3: #dd2121;
+$color-4: #efc421;
 
-.TreeNode{
+%ActionIcon {
+    box-shadow: 0 0 2px 2px $color-2;
+    color: $color-2;
+    font-weight: 1000;
+    height: 1em;
+    line-height: 1em;
+    width: 1em;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 20%;
+    cursor: pointer;
+}
+
+.TreeNode {
     width: min-content;
+    font-family: monospace;
+    font-size: 12pt;
+}
+
+.TreeNode:hover {
+    >.AddEntry {
+        display: block;
+    }
 }
 
 .TreeNode {
 
+
+    position: relative;
+    min-width: 4em;
+
+    .Action {
+        @extend %ActionIcon;
+    }
+
+    .AddEntry {
+        display: none;
+        position: absolute;
+        left: 2em;
+        top: 0%;
+        z-index: 1;
+        @extend %ActionIcon;
+    }
+
+    .Delete {
+        position: absolute;
+        z-index: 1;
+        display: none;
+        right: 100%;
+    }
+
+    .Action:hover::before {
+        content: attr(tooltip);
+        display: block;
+        position: absolute;
+        bottom: calc(100% + 0.5em);
+        white-space: nowrap;
+        background-color: $color-4;
+        padding: 0.2em;
+    }
+
+
+
     >ul {
         list-style-type: none;
+        padding-left: 2em;
+
+        >li {
+            position: relative;
+        }
+
+        >li:hover {
+            .Delete {
+                display: block;
+            }
+        }
+    }
+
+    .NodeValWrapper {
+        position: relative;
+
+        .Actions {
+            display: none;
+            position: absolute;
+            left: 100%;
+            white-space: nowrap;
+        }
+
+        .MakeArray,
+        .MakeObject {
+            display: inline;
+            margin: 0.25em;
+        }
+
+
+    }
+
+    .NodeValWrapper:hover {
+        .Actions {
+            display: block;
+        }
+    }
+
+    .key {
+        white-space: nowrap;
+    }
+
+    .NodeKey {
+        border-radius: 0.1em;
+        min-width: 1em;
+        max-width: 2em;
+        background-color: unset;
+        border: none;
+        color: #fff;
+        position: relative;
+        display: inline;
+    }
+
+    .NodeKey:focus {
+        outline: none;
     }
 
     .NodeVal {
         border-radius: 0.1em;
-        min-width: 10em;
-        max-width: min-content;
+        min-width: 1em;
+        max-width: 5em;
+        background-color: unset;
+        border: none;
+        color: #fff;
         position: relative;
     }
 
-    .NodeVal::after{
+
+
+    .NodeVal::after {
         content: ',';
         color: $color-2;
         font-weight: 600;
+    }
+
+    .NodeVal:focus {
+        outline: none;
     }
 
     .property {
