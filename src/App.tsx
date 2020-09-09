@@ -1,56 +1,60 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './App.scss';
 
 import { proxify } from './util/proxify';
 
 import { TreeNode } from './TreeNode';
 
-const o = {
-  a: 1,
-  b: 2,
+import { ChangeTracker } from './ChangeTracker';
+
+import { ChangesDotNotation } from './ChangesDotNotation';
+
+const o: any = {
+  a: "Hello",
+  b: "World",
   c: {
-    d: 3,
-    e: 4,
+    d: "This",
+    e: "Is",
     f: [
-      1,
-      2,
-      3,
+      "Tracking",
+      "All",
+      "Your",
       [
-        4,
-        5,
+        "Changes",
+        "!",
         {
-          g: 6
+          g: "😊"
         }
       ]
     ]
   }
 };
 
-const p = new (proxify as any)(o);
+const p = proxify(o, [() => {
+  setChanges(p.getChanges());
+}]);
 
-//Object test
-p.c.d = 4;
-//Array test
-p.c.f[0] = 2;
-p.c.f[0] = 1;
-
-//delete p.c.f;
-
-p.c.g = 9;
-
+let changes: any = {}, setChanges: React.Dispatch<any> = () => { }
 
 function App() {
+  [changes, setChanges] = useState({});
+
+  console.log(changes);
+
   return (
-    <div className="PlayField">
-      <div className="Left">
-        <h3>Proxified Object</h3>
-        <TreeNode value={p}></TreeNode>
+    <>
+      <div className="PlayField">
+        <div className="Left">
+          <h3>Proxified Object</h3>
+          <TreeNode value={p} ></TreeNode>
+        </div>
+        <div className="Right">
+          <h3>Delta Object Tracking Changes</h3>
+          <ChangeTracker value={changes}></ChangeTracker>
+        </div>
       </div>
-      <div className="Right">
-        <h3>Delta Object Tracking Changes</h3>
-        <TreeNode value={p.getChanges()}></TreeNode>
-      </div>
-    </div>
+      <div className="DotNotationLog"><ChangesDotNotation value={changes}></ChangesDotNotation></div>
+    </>
   );
 }
 

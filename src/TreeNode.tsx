@@ -5,7 +5,7 @@ type iTreeNode = {
     value: any,
     parent?: any,
     parentProperty?: number | symbol | string,
-    parentComponent?: TreeNode
+    parentComponent?: TreeNode,
 }
 
 
@@ -120,7 +120,7 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     this.forceUpdate();
                 }}
                 defaultValue={value}
-                style={{ width: ((`${this.props.parent[this.props.parentProperty!]}`.length / 2) + 'em') }}
+                style={{ width: ((`${this.props.parent[this.props.parentProperty!]}`.length / 2 + 0.5) + 'em') }}
                 className="NodeVal" />
         </div>
     }

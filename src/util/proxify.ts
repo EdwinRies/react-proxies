@@ -1,4 +1,5 @@
 import _ from 'lodash'
+import { debug } from 'console';
 /**
  * Defines the change tracking features that comes together with the proxified object
  */
@@ -9,9 +10,11 @@ interface iProxify {
     getChanges: () => any;
 }
 
+
 interface observer {
     (
         path: (string | number | symbol)[],
+        obj: object,
         property: string | number | symbol,
         value: any
     ): void
@@ -22,8 +25,8 @@ interface observer {
  * @param o Any object to be proxified
  * @param observers observer callbacks to be executed on each change
  */
-export function proxify<T>(
-    this: T & iProxify,
+export function proxify<T, U = T & iProxify>(
+    this: U,
     o: T,
     observers: observer[] = []
 ): T & iProxify {
@@ -34,21 +37,79 @@ export function proxify<T>(
     const self: (T & iProxify) | any = (typeof this === 'undefined') ? {} : this;
 
     const privates: proxyPrivates = {
-        oldValues: {},
-        changesDelta: {},
-        changesDot: {}
+        oldValues: _.cloneDeep(o),
+        changesDelta: {}
     };
 
     //Observer to track delta changes
-    observers = [(path, property, value) => {
-        let deltaObj = path.reduce((deltaCursor, pathElement) => {
-            if (!deltaCursor[pathElement])
-                deltaCursor[pathElement] = {};
+    observers = [(path, obj, property, value) => {
 
-            return deltaCursor[pathElement]
-        }, privates.changesDelta)
+        let oldValObj = path.reduce((oldValCursor, pathElement) => {
+            if (!oldValCursor[pathElement]) {
+                if (typeof obj === 'object') {
+                    if (Symbol.iterator in obj) {
+                        oldValCursor[pathElement] = [];
+                    }
+                    else {
+                        oldValCursor[pathElement] = {};
+                    }
+                } else if (typeof oldValCursor === 'object') {
+                    oldValCursor[pathElement] = obj;
+                }
+            }
+            return oldValCursor[pathElement];
+        }, privates.oldValues);
 
-        deltaObj[property] = value;
+
+        console.log(`${(property as string)} being set to`, value);
+        console.log(oldValObj[property], value);
+        //Compare with old value
+        if (_.isEqual(oldValObj[property], value)) {
+            console.log(`${(property as string)} Equal to initial value`);
+            //If we revert to the old value, we need to cleanup the delta object
+            let deltaObj = privates.changesDelta;
+
+            let deltaObjPath = [deltaObj];
+
+            //Traverse down the nested objects as close as possible to the changed property
+            for (const pathElement of path) {
+                if (!deltaObj[pathElement])
+                    break;
+
+                deltaObj = deltaObj[pathElement];
+                deltaObjPath.push(deltaObj);
+            }
+
+            console.log(deltaObjPath.length, path.length);
+            if (deltaObjPath.length === path.length + 1) {
+
+                delete deltaObj[property];
+
+                //Traverse back up and clean empty objects
+                if (deltaObjPath.length > -1) {
+                    deltaObjPath.reverse();
+                    for (let pathIndex = 0; pathIndex < deltaObjPath.length - 1; pathIndex++) {
+                        const pathElement = deltaObjPath[pathIndex + 1];
+                        if (Object.keys(deltaObjPath[pathIndex]).length === 0) {
+                            delete pathElement[path[deltaObjPath.length - pathIndex - 2]];
+                        }
+                    }
+                }
+
+            }
+        }
+        else {
+
+            let deltaObj = path!.reduce((deltaCursor, pathElement) => {
+                if (!deltaCursor[pathElement])
+                    deltaCursor[pathElement] = {};
+
+                return deltaCursor[pathElement]
+            }, privates.changesDelta)
+
+            deltaObj[property!] = value;
+
+        }
     }, ...observers];
 
     Object.assign(self, original);
@@ -57,7 +118,7 @@ export function proxify<T>(
 
         getChanges: {
             value: () => {
-                return privates.changesDelta;
+                return _.cloneDeep(privates.changesDelta);
             },
             writable: false
         }
@@ -75,7 +136,7 @@ export class Proxify implements iProxify {
 
     constructor(o: any) {
         //Will override all members of this class
-        return new (proxify as any)(o);
+        return proxify(o);
     }
 }
 
@@ -89,14 +150,14 @@ export class Proxify implements iProxify {
 function bindProxy<T>(
     privates: proxyPrivates,
     root: (T | object) & iProxify,
-    o: T | any = root,
+    obj: T | any = root,
     observers: observer[] = [],
     path: (string | number | symbol)[] = []
 ): T & iProxify {
 
-    if (typeof o === 'undefined' || o === null || typeof o === 'function') {
+    if (typeof obj === 'undefined' || obj === null || typeof obj === 'function') {
         //Cannot access children of undefined or null and functions should not be proxified
-        return o;
+        return obj;
     }
 
 
@@ -104,93 +165,47 @@ function bindProxy<T>(
     TypeOf Array is always 'object', so we get that info from the constructor
     or alternative would be Symbol.iterator in Object which is not 100% accurate
     */
-    const constructor: () => T = Object.getPrototypeOf(o).constructor;
-
-    let oldValObj = path.reduce((oldValCursor, pathElement) => {
-        if (!oldValCursor[pathElement]) {
-            if (typeof o === 'object') {
-                if (constructor.name === 'Array') {
-                    oldValCursor[pathElement] = [];
-                }
-                else {
-                    oldValCursor[pathElement] = {};
-                }
-            } else if (typeof oldValCursor === 'object') {
-                oldValCursor[pathElement] = o;
-            }
-        }
-        return oldValCursor[pathElement];
-    }, privates.oldValues);
+    const constructor: () => T = Object.getPrototypeOf(obj).constructor;
 
     //If type object, we want to iterate through members and proxify them before 
     //finally creating the current object's proxy
-    if (typeof o === "object") {
+    if (typeof obj === "object") {
 
-        for (const [k, v] of Object.entries(o)) {
+        for (const [k, v] of Object.entries(obj)) {
             //Arrays have special treatment due to length property also changing when appending etc.
             if (!(constructor.name === 'Array' && k === 'length'))
-                o[k] = bindProxy(privates, root, v, observers, [...path, k]);
+                obj[k] = bindProxy(privates, root, v, observers, [...path, k]);
         }
 
-        return new Proxy(o, {
+        const handler = {
 
-            deleteProperty: (target, property: string | number) => {
+            deleteProperty: (target: any, property: string | number) => {
                 console.log(`${property} was deleted`);
 
                 //Keeping the property, but with undefined value in the change Object so we can track the delete    
                 for (const obs of observers) {
-                    obs(path, property, undefined)
+                    obs(path, obj, property, undefined);
                 }
                 return delete target[property];
             },
 
-            set: (target: any, property: string | number, value: any, receiver): any => {
+            set: (target: any, property: string | number, value: any, receiver: any): any => {
 
-                console.log(`${property} being set to ${value}`);
-                //Compare with old value
-                if (_.isEqual(oldValObj[property], value)) {
-                    //If we revert to the old value, we need to cleanup the delta object
-                    let deltaObj = privates.changesDelta;
-                    let deltaObjPath = [deltaObj];
+                target[property] = (typeof value === "object") ? bindProxy(privates, root, value, observers, [...path, property]) : value;
 
-                    //Traverse down the nested objects as close as possible to the changed property
-                    for (const pathElement of path) {
-                        if (!deltaObj[pathElement])
-                            break;
-
-                        deltaObj = deltaObj[pathElement];
-                        deltaObjPath.push(deltaObj);
-                    }
-
-                    if (deltaObjPath.length === path.length + 1) {
-                        delete deltaObj[property];
-
-                        //Traverse back up and clean empty objects
-                        if (deltaObjPath.length > -1) {
-                            deltaObjPath.reverse();
-                            for (let pathIndex = 0; pathIndex < deltaObjPath.length - 1; pathIndex++) {
-                                const pathElement = deltaObjPath[pathIndex + 1];
-                                if (Object.keys(deltaObjPath[pathIndex]).length === 0) {
-                                    delete pathElement[path[deltaObjPath.length - pathIndex - 2]];
-                                }
-                            }
-                        }
-                    }
-                }
-                else {
-                    for (const obs of observers) {
-                        obs(path, property, value)
-                    }
+                for (const obs of observers) {
+                    obs(path, obj, property, value);
                 }
 
-                target[property] = value;
                 return receiver;
             }
-        });
+        };
+
+        return new Proxy(obj, handler);
 
     }
 
-    return o;
+    return obj;
 }
 
 /**
@@ -199,7 +214,6 @@ function bindProxy<T>(
 interface proxyPrivates {
     oldValues: any;
     changesDelta: any;
-    changesDot: changesDot;
 }
 
 /**

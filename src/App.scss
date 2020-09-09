@@ -61,3 +61,15 @@
   }
 
 }
+
+.DotNotationLog {
+  font-family: monospace;
+
+  p {
+    margin: 0;
+  }
+
+  >*:nth-child(2n) {
+    background-color: #eee;
+  }
+}
