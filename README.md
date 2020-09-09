@@ -30,3 +30,4 @@ const p = proxify(o, [() => {
   setChanges(p.getChanges());
 }]);
 ```
+![Screenshot](https://i.imgur.com/lyzyGyK.png)
