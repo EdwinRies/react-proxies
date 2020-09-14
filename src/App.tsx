@@ -8,6 +8,7 @@ import { TreeNode } from './TreeNode';
 import { ChangeTracker } from './ChangeTracker';
 
 import { ChangesDotNotation } from './ChangesDotNotation';
+import changeObserver from './util/changeObserver';
 
 const o: any = {
   a: "Hello",
@@ -30,16 +31,19 @@ const o: any = {
   }
 };
 
-const p = proxify(o, [() => {
-  setChanges(p.getChanges());
-}]);
+const [observer, getChanges] = changeObserver(o);
+
+const p = proxify(o, [
+  observer,
+  () => {
+    setChanges(getChanges());
+  }
+]);
 
 let changes: any = {}, setChanges: React.Dispatch<any> = () => { }
 
 function App() {
   [changes, setChanges] = useState({});
-
-  console.log(changes);
 
   return (
     <>

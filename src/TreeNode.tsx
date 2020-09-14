@@ -26,16 +26,19 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
 
             if (isArray) {
                 return <div className="TreeNode Array">
-                    <span className="Action AddEntry" onClick={(event) => {
-                        value.push('New Entry');
-                        this.forceUpdate();
-                    }} {...addEntryTooltip}>+</span>
+                    <div className="NodeActions">
+                        <span className="Action AddEntry" onClick={(event) => {
+                            value.push('New Entry');
+                            this.forceUpdate();
+                        }} {...addEntryTooltip}>+</span>
+
+                    </div>
                     <ul>
                         {Object.entries(value).map(([k, v]) =>
                             <li key={k}>
                                 <span className="Action Delete" {...deleteTooltip}
                                     onClick={() => {
-                                        delete value[k];
+                                        this.props.parent[this.props.parentProperty!] = [...value.slice(0, +k), ...value.slice(+k + 1)];
                                         this.forceUpdate();
                                     }}>-</span>
                                 <div className="property">
@@ -48,14 +51,16 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
             }
             else {
                 return <div className="TreeNode Object">
-                    <span className="Action AddEntry" onClick={() => {
-                        let newKey = 10;
-                        while (newKey.toString(36) in value || /[0-9]/.test(newKey.toString(36))) {
-                            newKey++;
-                        }
-                        value[newKey.toString(36)] = "New Entry";
-                        this.forceUpdate();
-                    }} {...addEntryTooltip}>+</span>
+                    <div className="NodeActions">
+                        <span className="Action AddEntry" onClick={() => {
+                            let newKey = 10;
+                            while (newKey.toString(36) in value || /[0-9]/.test(newKey.toString(36))) {
+                                newKey++;
+                            }
+                            value[newKey.toString(36)] = "New Entry";
+                            this.forceUpdate();
+                        }} {...addEntryTooltip}>+</span>
+                    </div>
                     <ul>
                         {Object.entries(value).sort((a, b) => { return a[0] > b[0] ? 1 : -1 }).map(([k, v]) =>
                             <li key={k}>
@@ -73,6 +78,7 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                                                 value[newKey] = value[k];
                                                 delete value[k];
                                                 k = newKey;
+                                                this.forceUpdate();
                                             }}
                                             onBlur={(event) => this.forceUpdate()}
                                         />
@@ -96,7 +102,6 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     className="Action MakeArray" {...MakeArrayTooltip}
                     onClick={() => {
                         this.props.parent[this.props.parentProperty!] = [];
-                        this.props.parentComponent!.forceUpdate();
                     }}
                 >{`[]`}
                 </span>
@@ -106,7 +111,6 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     {...MakeObjectTooltip}
                     onClick={() => {
                         this.props.parent[this.props.parentProperty!] = {};
-                        this.props.parentComponent!.forceUpdate();
                     }}>
                     {`{}`}
                 </span>
@@ -117,7 +121,6 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     if (parent && parentProperty) {
                         parent[parentProperty] = (event.target as HTMLInputElement).value;
                     }
-                    this.forceUpdate();
                 }}
                 defaultValue={value}
                 style={{ width: ((`${this.props.parent[this.props.parentProperty!]}`.length / 2 + 0.5) + 'em') }}
