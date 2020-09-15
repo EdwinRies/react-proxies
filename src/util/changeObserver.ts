@@ -13,10 +13,10 @@ export default function changeObserver(obj: any): [observer, () => any] {
     }
 
 
-    const observer: observer = (path, obj, property, value) => {
+    const observer: observer = (path, obj: any, property, value) => {
 
         //We don't care to track the length property of arrays
-        if (Symbol.iterator in obj && property === "length") {
+        if (typeof obj === 'object' && Symbol.iterator in obj && property === "length") {
             return;
         }
 
@@ -37,7 +37,7 @@ export default function changeObserver(obj: any): [observer, () => any] {
         }, oldValues);
 
 
-        console.log(`${(property as string)} being set to`, value);
+        console.log(`${(path.join('.') + (path.length ? '.' : '') + property.toString())} being set to`, value);
         //Compare with old value
         if (_.isEqual(oldValObj[property], value)) {
             console.log(`${(property as string)} Equal to initial value`);
@@ -79,9 +79,27 @@ export default function changeObserver(obj: any): [observer, () => any] {
                     deltaCursor[pathElement] = {};
 
                 return deltaCursor[pathElement]
-            }, changesDelta)
+            }, changesDelta);
 
-            deltaObj[property!] = value;
+            if (typeof value === 'object') {
+
+                const keys = [];
+
+                if (oldValObj[property] && typeof oldValObj[property] === 'object')
+                    keys.push(...Object.keys(oldValObj[property]));
+
+                if (value && typeof value === 'object')
+                    keys.push(...Object.keys(value));
+
+                for (const key of ([...new Set(keys)])) {
+                    if (oldValObj[property] && !_.isEqual(oldValObj[property][key], value[key]))
+                        observer([...path, property], obj[property], key, value[key]);
+                }
+                return;
+            }
+
+            if (typeof deltaObj === 'object')
+                deltaObj[property!] = value;
 
         }
     }

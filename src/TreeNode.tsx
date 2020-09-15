@@ -38,8 +38,9 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                             <li key={k}>
                                 <span className="Action Delete" {...deleteTooltip}
                                     onClick={() => {
-                                        this.props.parent[this.props.parentProperty!] = [...value.slice(0, +k), ...value.slice(+k + 1)];
-                                        this.forceUpdate();
+                                        const {parent, parentProperty} = this.props;
+                                        parent[parentProperty!] = [...value.slice(0, +k), ...value.slice(+k + 1)];
+                                        this.props.parentComponent!.forceUpdate();
                                     }}>-</span>
                                 <div className="property">
                                     <TreeNode value={v} key={k} parent={value} parentProperty={k} parentComponent={this} />
@@ -122,7 +123,7 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                         parent[parentProperty] = (event.target as HTMLInputElement).value;
                     }
                 }}
-                defaultValue={value}
+                value={value}
                 style={{ width: ((`${this.props.parent[this.props.parentProperty!]}`.length / 2 + 0.5) + 'em') }}
                 className="NodeVal" />
         </div>
