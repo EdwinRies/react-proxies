@@ -103,6 +103,7 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     className="Action MakeArray" {...MakeArrayTooltip}
                     onClick={() => {
                         this.props.parent[this.props.parentProperty!] = [];
+                        this.forceUpdate();
                     }}
                 >{`[]`}
                 </span>
@@ -112,6 +113,7 @@ export class TreeNode extends React.Component<iTreeNode, iTreeNode> {
                     {...MakeObjectTooltip}
                     onClick={() => {
                         this.props.parent[this.props.parentProperty!] = {};
+                        this.forceUpdate();
                     }}>
                     {`{}`}
                 </span>

@@ -81,7 +81,7 @@ export default function changeObserver(obj: any): [observer, () => any] {
                 return deltaCursor[pathElement]
             }, changesDelta);
 
-            if (typeof value === 'object') {
+            if (typeof value === 'object' && Object.keys(value).length > 0) {
 
                 const keys = [];
 
@@ -91,11 +91,15 @@ export default function changeObserver(obj: any): [observer, () => any] {
                 if (value && typeof value === 'object')
                     keys.push(...Object.keys(value));
 
+                let hit = false;
                 for (const key of ([...new Set(keys)])) {
-                    if (oldValObj[property] && !_.isEqual(oldValObj[property][key], value[key]))
+                    if (oldValObj[property] && !_.isEqual(oldValObj[property][key], value[key])) {
+                        hit = true;
                         observer([...path, property], obj[property], key, value[key]);
+                    }
                 }
-                return;
+                if (hit)
+                    return;
             }
 
             if (typeof deltaObj === 'object')

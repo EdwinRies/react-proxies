@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 /**
  * Unique symbol for detecting whether an object has already been proxified.
  */
@@ -109,7 +111,7 @@ function bindProxy<T>(
 
                 //Call all observers
                 for (const obs of observers) {
-                    obs(path, obj, property, value);
+                    obs(path, obj, property, _.cloneDeep(value));
                 }
 
                 return receiver;
